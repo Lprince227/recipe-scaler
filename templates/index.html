@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Recipes</h1>
+{% if recipes %}
+  <ul>
+  {% for key, r in recipes %}
+    <li><a href="{{ url_for('view_recipe', key=key) }}">{{ r.name }}</a> &mdash; serves {{ r.servings }}</li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p>No recipes yet. <a href="{{ url_for('new_recipe') }}">Enter your first recipe</a>.</p>
+{% endif %}
+{% endblock %}

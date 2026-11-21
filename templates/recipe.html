@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.name }} &ndash; Recipe Scaler{% endblock %}
+{% block content %}
+<h1>{{ recipe.name }}</h1>
+<p>Original recipe serves {{ recipe.servings }}.</p>
+
+<form method="get">
+  <label>Scale to <input type="number" name="servings" min="1" step="1" value="{{ scaled.servings }}" style="width:6rem"> servings</label>
+  <button type="submit">Scale</button>
+</form>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+<h2>Ingredients for {{ scaled.servings }} (&times;{{ scaled.factor | qty }})</h2>
+<table>
+  <tr><th>Ingredient</th><th class="num">Original</th><th class="num">Scaled</th><th>Unit</th></tr>
+  {% for i in scaled.ingredients %}
+  <tr><td>{{ i.name }}</td><td class="num">{{ i.original | qty }}</td><td class="num"><strong>{{ i.quantity | qty }}</strong></td><td>{{ i.unit }}</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Pantry check</h2>
+{% if alerts %}
+<div class="alerts">
+  <ul>
+  {% for a in alerts %}
+    {% if a.status == core.MISSING %}
+      <li><strong>{{ a.name }}</strong> is not in your pantry (need {{ a.needed | qty }} {{ a.unit }}).</li>
+    {% elif a.status == core.NOT_ENOUGH %}
+      <li><strong>{{ a.name }}</strong>: need {{ a.needed | qty }} {{ a.unit }}, have {{ a.on_hand | qty }} {{ a.on_hand_unit }} &mdash; short {{ a.shortfall | qty }} {{ a.unit }}.</li>
+    {% else %}
+      <li><strong>{{ a.name }}</strong>: need {{ a.needed | qty }} {{ a.unit or "(no unit)" }}, pantry has {{ a.on_hand | qty }} {{ a.on_hand_unit or "(no unit)" }} &mdash; different units, please check by hand.</li>
+    {% endif %}
+  {% endfor %}
+  </ul>
+</div>
+{% else %}
+<p class="ok">Your pantry has everything for this recipe.</p>
+{% endif %}
+{% endblock %}

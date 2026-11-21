@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Pantry &ndash; Recipe Scaler{% endblock %}
+{% block content %}
+<h1>Pantry</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post">
+  <table>
+    <tr><th>Ingredient</th><th style="width:20%">Quantity</th><th style="width:20%">Unit</th><th></th></tr>
+    <tr>
+      <td><input type="text" name="name" required aria-label="Ingredient"></td>
+      <td><input type="text" name="quantity" required aria-label="Quantity" placeholder="e.g. 2 or 1/2"></td>
+      <td><input type="text" name="unit" aria-label="Unit"></td>
+      <td><button type="submit">Add / update</button></td>
+    </tr>
+  </table>
+  <small>Use the same unit as your recipes so amounts can be compared. Adding an existing name updates it.</small>
+</form>
+
+{% if items %}
+<table>
+  <tr><th>Ingredient</th><th class="num">Quantity</th><th>Unit</th><th></th></tr>
+  {% for p in items %}
+  <tr>
+    <td>{{ p.name }}</td><td class="num">{{ p.quantity | qty }}</td><td>{{ p.unit }}</td>
+    <td><form class="inline" method="post" action="{{ url_for('remove_pantry') }}"><input type="hidden" name="name" value="{{ p.name }}"><button type="submit">Remove</button></form></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>Your pantry is empty.</p>
+{% endif %}
+{% endblock %}

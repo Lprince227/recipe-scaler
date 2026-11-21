@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}New recipe &ndash; Recipe Scaler{% endblock %}
+{% block content %}
+<h1>New recipe</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post">
+  <p><label>Recipe name<br><input type="text" name="name" value="{{ form.get('name', '') }}" required></label></p>
+  <p><label>Servings<br><input type="number" name="servings" min="1" step="1" value="{{ form.get('servings', '') }}" required></label></p>
+  <p>Ingredients &mdash; quantity can be 2, 0.5, 1/2 or 1 1/2. Unit may be blank (e.g. 3 eggs). Empty rows are ignored.</p>
+  <table>
+    <tr><th style="width:20%">Quantity</th><th style="width:20%">Unit</th><th>Ingredient</th></tr>
+    {% for qty, unit, name in rows %}
+    <tr>
+      <td><input type="text" name="qty{{ loop.index0 }}" value="{{ qty }}" aria-label="Quantity {{ loop.index }}"></td>
+      <td><input type="text" name="unit{{ loop.index0 }}" value="{{ unit }}" aria-label="Unit {{ loop.index }}"></td>
+      <td><input type="text" name="name{{ loop.index0 }}" value="{{ name }}" aria-label="Ingredient {{ loop.index }}"></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <button type="submit">Save recipe</button>
+  <small>Saving with the same name as an existing recipe replaces it.</small>
+</form>
+{% endblock %}
