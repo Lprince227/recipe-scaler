@@ -6,8 +6,12 @@ browser or web server.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+import os
+import tempfile
+from dataclasses import asdict, dataclass, field
 from fractions import Fraction
+from pathlib import Path
 
 
 class RecipeError(ValueError):
@@ -211,3 +215,94 @@ def check_pantry(ingredients, pantry: dict[str, PantryItem]) -> list[PantryAlert
         elif item.quantity + _EPSILON < needed:
             alerts.append(PantryAlert(name, unit, NOT_ENOUGH, needed, item.quantity, item.unit))
     return alerts
+
+
+# ---------------------------------------------------------------- R4: storage
+
+class StorageError(Exception):
+    """Raised when the saved data file exists but cannot be read."""
+
+
+def save_data(path, recipes: dict[str, Recipe], pantry: dict[str, PantryItem]) -> None:
+    """Write recipes and pantry to a JSON file.
+
+    Writes to a temporary file first and then replaces the target, so a crash
+    mid-write never leaves a half-written data file.
+    """
+    path = Path(path)
+    data = {
+        "recipes": [asdict(r) for r in recipes.values()],
+        "pantry": [asdict(p) for p in pantry.values()],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2)
+        os.replace(tmp_name, path)
+    except BaseException:
+        if os.path.exists(tmp_name):
+            os.remove(tmp_name)
+        raise
+
+
+def _number(value, what: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise StorageError(f"{what} must be a number")
+    return float(value)
+
+
+def _text(value, what: str) -> str:
+    if not isinstance(value, str):
+        raise StorageError(f"{what} must be text")
+    return value
+
+
+def load_data(path) -> tuple[dict[str, Recipe], dict[str, PantryItem]]:
+    """Load recipes and pantry from a JSON file.
+
+    A missing file means a first run and returns empty data. A file that exists
+    but is invalid raises StorageError, and the file is not modified.
+    """
+    path = Path(path)
+    if not path.exists():
+        return {}, {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise StorageError("top level must be an object")
+        raw_recipes = data.get("recipes", [])
+        raw_pantry = data.get("pantry", [])
+        if not isinstance(raw_recipes, list) or not isinstance(raw_pantry, list):
+            raise StorageError("'recipes' and 'pantry' must be lists")
+
+        recipes: dict[str, Recipe] = {}
+        for r in raw_recipes:
+            servings = r["servings"]
+            if isinstance(servings, bool) or not isinstance(servings, int) or servings < 1:
+                raise StorageError("recipe servings must be a whole number >= 1")
+            ingredients = [
+                Ingredient(
+                    name=_text(i["name"], "ingredient name"),
+                    quantity=_number(i["quantity"], "ingredient quantity"),
+                    unit=_text(i["unit"], "ingredient unit"),
+                )
+                for i in r["ingredients"]
+            ]
+            add_recipe(recipes, Recipe(_text(r["name"], "recipe name"), servings, ingredients))
+
+        pantry: dict[str, PantryItem] = {}
+        for p in raw_pantry:
+            set_pantry_item(
+                pantry,
+                PantryItem(
+                    name=_text(p["name"], "pantry name"),
+                    quantity=_number(p["quantity"], "pantry quantity"),
+                    unit=_text(p["unit"], "pantry unit"),
+                ),
+            )
+    except StorageError as exc:
+        raise StorageError(f"Could not read {path}: {exc}") from None
+    except (ValueError, KeyError, TypeError) as exc:
+        raise StorageError(f"Could not read {path}: {exc!r}") from None
+    return recipes, pantry
