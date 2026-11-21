@@ -135,3 +135,79 @@ def format_quantity(value: float) -> str:
     """Display a quantity with up to 2 decimals, dropping trailing zeros."""
     text = f"{value:.2f}".rstrip("0").rstrip(".")
     return "0" if text in ("-0", "") else text
+
+
+# ---------------------------------------------------------------- R3: pantry
+
+@dataclass
+class PantryItem:
+    name: str
+    quantity: float
+    unit: str
+
+
+def make_pantry_item(name: str, quantity: str, unit: str) -> PantryItem:
+    """Build a validated pantry item. Quantity may be 0 (run out)."""
+    name = (name or "").strip()
+    if not name:
+        raise RecipeError("Pantry item name is required")
+    return PantryItem(name=name, quantity=parse_quantity(quantity, allow_zero=True), unit=(unit or "").strip())
+
+
+def set_pantry_item(pantry: dict[str, PantryItem], item: PantryItem) -> None:
+    """Add or update a pantry item (matched by name, ignoring case)."""
+    pantry[normalize(item.name)] = item
+
+
+def remove_pantry_item(pantry: dict[str, PantryItem], name: str) -> bool:
+    """Remove a pantry item by name. Returns True if something was removed."""
+    return pantry.pop(normalize(name), None) is not None
+
+
+MISSING = "missing"
+NOT_ENOUGH = "not_enough"
+UNIT_MISMATCH = "unit_mismatch"
+
+# Tolerance so floating-point noise (e.g. 2.0000000001) doesn't raise a false alert.
+_EPSILON = 1e-9
+
+
+@dataclass
+class PantryAlert:
+    name: str
+    unit: str
+    status: str  # MISSING, NOT_ENOUGH or UNIT_MISMATCH
+    needed: float
+    on_hand: float = 0.0
+    on_hand_unit: str = ""
+
+    @property
+    def shortfall(self) -> float:
+        return max(self.needed - self.on_hand, 0.0)
+
+
+def check_pantry(ingredients, pantry: dict[str, PantryItem]) -> list[PantryAlert]:
+    """Compare needed ingredients with the pantry and return alerts.
+
+    ingredients is any sequence of objects with name, quantity and unit
+    (Ingredient or ScaledIngredient). Lines with the same name and unit are
+    summed first. Ingredients that are available produce no alert.
+    """
+    needs: dict[tuple[str, str], list] = {}
+    for ing in ingredients:
+        key = (normalize(ing.name), normalize(ing.unit))
+        if key in needs:
+            needs[key][2] += ing.quantity
+        else:
+            needs[key] = [ing.name, ing.unit, ing.quantity]
+
+    alerts = []
+    for (name_key, unit_key), (name, unit, needed) in needs.items():
+        item = pantry.get(name_key)
+        if item is None:
+            alerts.append(PantryAlert(name, unit, MISSING, needed))
+        elif normalize(item.unit) != unit_key:
+            alerts.append(PantryAlert(name, unit, UNIT_MISMATCH, needed, item.quantity, item.unit))
+        elif item.quantity + _EPSILON < needed:
+            alerts.append(PantryAlert(name, unit, NOT_ENOUGH, needed, item.quantity, item.unit))
+    return alerts
