@@ -1,5 +1,5 @@
 """Core logic for the recipe scaler: entering recipes (R1), scaling (R2),
-pantry checks (R3), and saving/loading (R4).
+pantry checks (R3), saving/loading (R4), and deleting recipes (R5).
 
 This module deliberately does not import Flask so it can be tested without a
 browser or web server.
@@ -103,6 +103,29 @@ def make_recipe(name: str, servings: str | int, rows) -> Recipe:
 def add_recipe(recipes: dict[str, Recipe], recipe: Recipe) -> None:
     """Add a recipe, replacing any existing recipe with the same name (any case)."""
     recipes[normalize(recipe.name)] = recipe
+
+
+# ---------------------------------------------------------------- R5: delete
+
+# The value the confirmation page sends when the user clicks "Yes, delete".
+CONFIRM_DELETE_VALUE = "yes"
+
+
+def is_delete_confirmed(value) -> bool:
+    """True only if a form value is the confirmation page's 'yes' answer."""
+    return isinstance(value, str) and value.strip().casefold() == CONFIRM_DELETE_VALUE
+
+
+def delete_recipe(recipes: dict[str, Recipe], name: str, *, confirmed: bool) -> Recipe | None:
+    """Delete the recipe with this name (case and outer spaces ignored).
+
+    The delete only happens if confirmed is exactly True. Anything else raises
+    RecipeError and leaves the recipes unchanged. Returns the removed recipe,
+    or None if no recipe has that name.
+    """
+    if confirmed is not True:
+        raise RecipeError("Please confirm that you want to delete this recipe")
+    return recipes.pop(normalize(name), None)
 
 
 # ---------------------------------------------------------------- R2: scaling
