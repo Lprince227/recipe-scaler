@@ -8,3 +8,4 @@ Home cooks planning a party or cooking for a large group need a recipe for a dif
 - R2: Scale the recipe to a new number of people being served and show the adjustments
 - R3: Keep a pantry list and alert the user if ingredients aren't available in the list
 - R4: Save the recipes and pantry data
+- R5: The user can delete a recipe from the saved data. the app asks if the user is sure before deleting the recipe. 
