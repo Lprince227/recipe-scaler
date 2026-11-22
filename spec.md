@@ -1,11 +1,12 @@
-# Recipe Scaler — Specification (round 1)
+# Recipe Scaler — Specification (round 2)
 
 ## Purpose
 
 Home cooks often need a recipe for a different number of people than it was
 written for. Converting the amounts by hand is slow and easy to get wrong. This
 program stores recipes, scales them to a new number of servings, checks the
-scaled amounts against a pantry, and saves everything between runs.
+scaled amounts against a pantry, saves everything between runs, and lets the
+user delete recipes they no longer want.
 
 It is a local Flask web app. It has no login, needs no API keys, and uses no
 paid services.
@@ -82,21 +83,46 @@ The user keeps a pantry list. Each item has a **name**, a **quantity**
 - The file location can be changed with the `RECIPE_DATA_FILE` environment
   variable. The tests use this to work with temporary files.
 
+### R5 — Delete a recipe, after confirmation (added in round 2)
+
+The user can delete a saved recipe. The app asks if they are sure first.
+
+- The recipe's own page has a **Delete recipe** button. The recipe list has no
+  delete button, so the user always sees the recipe before deleting it.
+- Clicking it opens a confirmation page that names the recipe and says the
+  deletion cannot be undone. It has two choices:
+  - **Yes, delete** removes the recipe.
+  - **Cancel** goes back to the recipe page and changes nothing.
+- The recipe is removed only if the request explicitly confirms the delete.
+  A delete request without that confirmation removes nothing, and the
+  confirmation page is shown again.
+- The recipe is found by name, ignoring case and surrounding whitespace, the
+  same way R1 matches names. Only that one recipe is removed.
+- Asking to delete a recipe that doesn't exist changes nothing (the page shows
+  "not found").
+- After a delete, the change is saved to the data file right away (R4). The
+  recipe is gone after a restart.
+- The user returns to the recipe list, which shows a message such as
+  "Deleted Pancakes."
+- Deletion is permanent. There is no undo. The pantry is not changed.
+
 ## Architecture
 
 - `recipe_core.py` holds all logic: parsing and validation (R1), scaling and
-  formatting (R2), the pantry check (R3), and save/load (R4). It does not
-  import Flask, so it can be tested without a browser.
+  formatting (R2), the pantry check (R3), save/load (R4), and deleting a
+  recipe only when the delete is confirmed (R5). It does not import Flask, so
+  it can be tested without a browser.
 - `app.py` holds the Flask routes and HTML templates. It only passes form data
   to `recipe_core` and renders the results.
 - `tests/` holds pytest tests for `recipe_core`. Every test names the
   requirement it checks.
 
-## Out of scope for round 1
+## Out of scope (rounds 1 and 2)
 
 - Unit conversion (for example, tsp to cup or g to kg).
 - Editing a single ingredient in place. Re-entering the recipe under the same
   name replaces it.
-- Deleting recipes.
+- Undoing a delete, or a trash bin for deleted recipes.
+- Deleting several recipes at once.
 - Using a recipe to subtract amounts from the pantry.
 - Multiple users or accounts.
