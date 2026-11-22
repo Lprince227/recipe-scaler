@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ recipe.name }}? &ndash; Recipe Scaler{% endblock %}
+{% block content %}
+<h1>Delete &ldquo;{{ recipe.name }}&rdquo;?</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<p class="alerts">Are you sure you want to delete <strong>{{ recipe.name }}</strong>
+  (serves {{ recipe.servings }}, {{ recipe.ingredients | length }} ingredient{{ "" if recipe.ingredients | length == 1 else "s" }})?
+  This cannot be undone. Your pantry will not be changed.</p>
+<form class="inline" method="post" action="{{ url_for('delete_recipe', key=key) }}">
+  <button type="submit" name="confirm" value="{{ core.CONFIRM_DELETE_VALUE }}">Yes, delete</button>
+</form>
+<a href="{{ url_for('view_recipe', key=key) }}">Cancel</a>
+{% endblock %}

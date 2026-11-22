@@ -33,7 +33,25 @@ def create_app(data_file: str | os.PathLike | None = None) -> Flask:
     @app.get("/")
     def index():
         ordered = sorted(recipes.items(), key=lambda kv: kv[1].name.casefold())
-        return render_template("index.html", recipes=ordered)
+        return render_template("index.html", recipes=ordered, deleted=request.args.get("deleted"))
+
+    # R5: GET shows "are you sure?"; POST deletes only if the form says yes.
+    # Own URL prefix because /recipes/<path:key> would also match ".../delete".
+    @app.route("/delete-recipe/<path:key>", methods=["GET", "POST"])
+    def delete_recipe(key: str):
+        recipe = recipes.get(key)
+        if recipe is None:
+            abort(404)
+        if request.method == "POST":
+            confirmed = core.is_delete_confirmed(request.form.get("confirm"))
+            try:
+                with lock:
+                    removed = core.delete_recipe(recipes, recipe.name, confirmed=confirmed)
+                    save()
+            except core.RecipeError as exc:
+                return render_template("confirm_delete.html", key=key, recipe=recipe, error=str(exc), core=core), 400
+            return redirect(url_for("index", deleted=removed.name))
+        return render_template("confirm_delete.html", key=key, recipe=recipe, error=None, core=core)
 
     @app.route("/recipes/new", methods=["GET", "POST"])
     def new_recipe():
